@@ -1,0 +1,33 @@
+[project]
+name = "cryomap_align"
+authors = [
+    {name = "David Silva Sanchez", email = "david.silva@yale.edu"},
+]
+
+description = "CryoMAP Align, based on the publication Alignment of Density Maps in Wasserstein Distance by Amit Singer and Ruiyi Yang"
+
+readme = "README.rst"
+requires-python = ">=3.7"
+keywords = ["CryoEM", "Volume Alignment"]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "numpy",
+    "pymanopt",
+    "configargparse",
+    "PyWavelets",
+    "scipy",
+]
+
+dynamic = ["version"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cryomap_align*"]
+
+[project.scripts]
+align_maps = "cryomap_align.commands.run_align:main"
+
