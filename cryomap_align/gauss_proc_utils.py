@@ -2,6 +2,7 @@ import numpy as np
 import argparse
 import logging
 
+
 def calc_corr(
     matrix1: np.ndarray,
     matrix2: np.ndarray,

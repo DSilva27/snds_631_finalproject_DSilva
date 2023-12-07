@@ -70,7 +70,7 @@ def earthmovers_dist(vol1_dwt: list, vol2_dwt: list) -> float:
     return earthm_dist
 
 
-def calc_loss(rot: np.ndarray, vol_obj: Volume, vol_ref_dwt: list) -> float:
+def calc_wemd(rot: np.ndarray, vol_obj: Volume, vol_ref_dwt: list) -> float:
     """
     Calculate the loss between the objective volume (volume we wish to align) and reference volume. The loss is the Earthmover's distance between the wavelet coefficients of the objective volume and the reference volume.
 

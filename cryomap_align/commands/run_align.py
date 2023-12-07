@@ -1,13 +1,13 @@
 import configargparse
 from aspire.volume import Volume
+from aspire.utils.rotation import Rotation
 import numpy as np
 import os
 import logging
 
-from cryomap_align.utils import init_config, try_mkdir
+from cryomap_align.utils import init_config, try_mkdir, center_vol
 from cryomap_align.gauss_opt_utils import run_gaussian_opt
 from cryomap_align.opt_refinement import run_nelder_mead_refinement
-
 
 parser = configargparse.ArgumentParser()
 parser.add_argument(
@@ -19,18 +19,21 @@ parser.add_argument(
 )
 init_config(parser)
 config = parser.parse_args()
+config.full_save_path = os.path.join(config.save_path, config.experiment_name)
 
-if not try_mkdir(config.save_path):
+if not try_mkdir(config.full_save_path):
     raise SystemError("Could not create output directory")
 
 # create experiment directory
+logging.captureWarnings(True)
 
 logger = logging.getLogger()
 fhandler = logging.FileHandler(
-    filename=os.path.join(config.save_path, "log.log"), mode="a"
+    filename=os.path.join(config.full_save_path, "log.log"), mode="a"
 )
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 fhandler.setFormatter(formatter)
+
 logger.addHandler(fhandler)
 logger.setLevel(logging.INFO)
 
@@ -48,27 +51,61 @@ def main():
     if config.corr_length is None:
         config.corr_length = 0.75  # if config.dist_metric == "wasserstein" else 1.0
 
-    map1 = Volume.load(config.map1)
-    map2 = Volume.load(config.map2)
+    vol1 = Volume.load(config.vol1)
+    vol2 = Volume.load(config.vol2)
 
-    opt_rot = run_gaussian_opt(map1, map2, init_cand, config)
+    if config.downsample_res is None:
+        config.downsample_res = vol1.shape[1]
+
+    assert vol1.shape == vol2.shape, "Volumes must have the same shape"
+    assert (
+        config.downsample_res <= vol1.shape[1]
+    ), "Downsampling resolution must be smaller than volume size"
+
+    vol1_cent = center_vol(vol1, config)
+    vol2_cent = center_vol(vol2, config)
+
+    vol1_cent.save(os.path.join(config.full_save_path, "vol1_cent.mrc"), overwrite=True)
+    vol2_cent.save(os.path.join(config.full_save_path, "vol2_cent.mrc"), overwrite=True)
+
+    vol1_cent_ds = vol1_cent.downsample(config.downsample_res)
+    vol2_cent_ds = vol2_cent.downsample(config.downsample_res)
+
+    opt_rot = run_gaussian_opt(vol1_cent_ds, vol2_cent_ds, init_cand, config)
+
+    # rotations = np.load(os.path.join(config.full_save_path, "optimized_rotations.npz"))
+    # opt_rot = rotations["opt_rot"].astype(np.float32)
+    # refined_rot = rotations["refined_rot"].astype(np.float32)
+
+    vol2_aligned = vol2_cent.rotate(Rotation(opt_rot.T))
+    vol2_aligned.save(
+        os.path.join(config.full_save_path, "vol2_aligned.mrc"), overwrite=True
+    )
 
     if config.refine:
-        refined_rot = run_nelder_mead_refinement(opt_rot, map1, map2, config)
+        refined_rot = run_nelder_mead_refinement(
+            opt_rot, vol1_cent_ds, vol2_cent_ds, config
+        )
+
+        vol2_aligned = vol2_cent.rotate(Rotation(refined_rot.T))
+        vol2_aligned.save(
+            os.path.join(config.full_save_path, "vol2_aligned_refined.mrc"),
+            overwrite=True,
+        )
 
         np.savez(
-            os.path.join(config.save_path, "optimized_rotations.npz"),
+            os.path.join(config.full_save_path, "optimized_rotations.npz"),
             opt_rot=opt_rot,
             refined_rot=refined_rot,
         )
 
     else:
         np.savez(
-            os.path.join(config.save_path, "optimized_rotations.npz"),
+            os.path.join(config.full_save_path, "optimized_rotations.npz"),
             opt_rot=opt_rot,
-       )
-        
+        )
+
     # copy the config file to the output directory
     os.system(f"cp {config.config} {config.save_path}")
-    
+
     return 0
