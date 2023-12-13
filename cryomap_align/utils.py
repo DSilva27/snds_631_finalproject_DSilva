@@ -2,7 +2,6 @@ import configargparse
 import os
 import logging
 import numpy as np
-from scipy import ndimage
 from aspire.volume import Volume
 from aspire.utils.rotation import Rotation
 
@@ -187,53 +186,6 @@ def print_config(config: configargparse.Namespace):
     logging.info("Refine: %s", config.refine)
 
     return
-
-
-def generate_grid1d(box_size: int, pixel_size: float = 1):
-    grid_limit = pixel_size * box_size * 0.5
-    grid = np.arange(-grid_limit, grid_limit, pixel_size)[0:box_size]
-
-    return grid
-
-
-def center_vol(volume: Volume, config: configargparse.Namespace):
-    """
-    Center the vol by shifting the center of mass to the origin.
-
-    Parameters
-    ----------
-    volume : aspire.volume.Volume
-        Volume to be centered.
-    config : configargparse.Namespace
-        Configuration object (from config file).
-
-    Returns
-    -------
-    vol_centered : aspire.volume.Volume
-        Centered volume.
-    """
-
-    logging.info("Centering volume")
-    vol_copy = np.copy(volume._data[0])
-    vol_copy[vol_copy < config.centering_noise_filter] = 0.0
-
-    vol_copy = vol_copy / vol_copy.sum()
-    grid = generate_grid1d(vol_copy.shape[-1], config.pixel_size)
-
-    center_of_mass = np.zeros(3)
-    for i, ax in enumerate([(1, 2), (0, 2), (0, 1)]):
-        center_of_mass[i] = np.sum(vol_copy, axis=ax) @ grid
-
-    logging.info("Center of mass: %s", center_of_mass)
-
-    vol_cent_data = ndimage.shift(
-        vol_copy, -center_of_mass, order=config.center_order, mode="constant"
-    )
-    vol_centered = Volume(vol_cent_data[np.newaxis, ...])
-
-    logging.info("Volume centered")
-
-    return vol_centered
 
 
 def calc_l2_loss(rot: np.ndarray, vol_obj: Volume, vol_ref: Volume) -> float:

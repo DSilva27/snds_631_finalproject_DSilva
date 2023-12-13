@@ -20,7 +20,8 @@ dependencies = [
     "configargparse",
     "PyWavelets",
     "scipy",
-    "aspire"
+    "aspire",
+    "MDAnalysis",
 ]
 
 dynamic = ["version"]
