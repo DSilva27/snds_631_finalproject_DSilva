@@ -255,7 +255,7 @@ def calc_l2_loss(rot: np.ndarray, vol_obj: Volume, vol_ref: Volume) -> float:
         Loss between the objective volume and reference volume.
     """
 
-    vol_obj_rot = vol_obj.rotate(Rotation(rot))._data[0]
+    vol_obj_rot = vol_obj.rotate(Rotation(rot.T))._data[0]
 
     loss = np.linalg.norm(vol_obj_rot - vol_ref._data[0])
 

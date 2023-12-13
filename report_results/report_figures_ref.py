@@ -40,16 +40,26 @@ fhandler.setFormatter(formatter)
 logger.addHandler(fhandler)
 logger.setLevel(logging.INFO)
 
+def calc_error(mtx1, mtx2):
+
+    cos_theta= (np.trace(mtx1@mtx2.T)-1)/2;
+    if cos_theta>1:
+        cos_theta=1
+    if cos_theta<-1:
+        cos_theta=-1
+
+    return np.abs(np.arccos(cos_theta) * (180)/np.pi)
+
 def run_align_test(vol_fnames, n_iter, config, param_setups):
 
     init_cand = np.eye(3).reshape(1, 3, 3) # start from identity matrix
 
     results = {
-        "true_quats": np.zeros((len(vol_fnames), len(param_setups), n_iter, 4)),
-        "optim_quats_wemd": np.zeros((len(vol_fnames), len(param_setups), n_iter, 4)),
-        "refin_quats_wemd": np.zeros((len(vol_fnames), len(param_setups), n_iter, 4)),
-        "optim_quats_l2": np.zeros((len(vol_fnames), len(param_setups), n_iter, 4)),
-        "refin_quats_l2": np.zeros((len(vol_fnames), len(param_setups), n_iter, 4)),
+        "true_mtx": np.zeros((len(vol_fnames), len(param_setups), n_iter, 3, 3)),
+        "optim_max_wemd": np.zeros((len(vol_fnames), len(param_setups), n_iter, 3, 3)),
+        "refin_max_wemd": np.zeros((len(vol_fnames), len(param_setups), n_iter, 3, 3)),
+        "optim_max_l2": np.zeros((len(vol_fnames), len(param_setups), n_iter, 3, 3)),
+        "refin_max_l2": np.zeros((len(vol_fnames), len(param_setups), n_iter, 3, 3)),
         "run_time_wemd": np.zeros((len(vol_fnames), len(param_setups), n_iter, 2)),
         "run_time_l2": np.zeros((len(vol_fnames), len(param_setups), n_iter, 2)),
     }
@@ -69,7 +79,7 @@ def run_align_test(vol_fnames, n_iter, config, param_setups):
                 
                 # generate random rotation
                 true_rot = aspire_Rotation.generate_random_rotations(1)
-                results["true_quats"][i, j, k] = scipy_Rotation.from_matrix(true_rot._matrices[0]).as_quat()
+                results["true_mtx"][i, j, k] = true_rot._matrices[0]
                 vol = vol_ref.rotate(true_rot).downsample(config.downsample_res)
 
                 # run for wemd
@@ -83,8 +93,8 @@ def run_align_test(vol_fnames, n_iter, config, param_setups):
                 end_time = time.time()
 
                 results["run_time_wemd"][i, j, k] = [opt_time - start_time, end_time - start_time]
-                results["optim_quats_wemd"][i, j, k] = scipy_Rotation.from_matrix(opt_rot).as_quat()
-                results["refin_quats_wemd"][i, j, k] = scipy_Rotation.from_matrix(ref_rot).as_quat()
+                results["optim_max_wemd"][i, j, k] = opt_rot
+                results["refin_max_wemd"][i, j, k] = ref_rot
 
                 # run for l2
                 config.loss_type = "l2"
@@ -96,21 +106,24 @@ def run_align_test(vol_fnames, n_iter, config, param_setups):
                 ref_rot = run_nelder_mead_refinement(vol, vol_ref_ds, opt_rot, config)
                 end_time = time.time()
 
-                results["optim_quats_l2"][i, j, k] = scipy_Rotation.from_matrix(opt_rot).as_quat()
-                results["refin_quats_l2"][i, j, k] = scipy_Rotation.from_matrix(ref_rot).as_quat()
+                results["optim_max_l2"][i, j, k] = opt_rot
+                results["refin_max_l2"][i, j, k] = ref_rot
                 results["run_time_l2"][i, j, k] = [opt_time - start_time, end_time - start_time]
 
 
                 # output results to log
-                err_wemd_opt = np.linalg.norm(results["optim_quats_wemd"][i, j, k] - results["true_quats"][i, j, k]) / np.linalg.norm(results["true_quats"][i, j, k])
-
-                err_wemd_ref = np.linalg.norm(results["refin_quats_wemd"][i, j, k] - results["true_quats"][i, j, k]) / np.linalg.norm(results["true_quats"][i, j, k])
-
-                err_l2_opt = np.linalg.norm(results["optim_quats_l2"][i, j, k] - results["true_quats"][i, j, k]) / np.linalg.norm(results["true_quats"][i, j, k])
-
-                err_l2_ref = np.linalg.norm(results["refin_quats_l2"][i, j, k] - results["true_quats"][i, j, k]) / np.linalg.norm(results["true_quats"][i, j, k])
+                err_wemd_opt = calc_error(results["optim_max_wemd"][i, j, k], results["true_mtx"][i, j, k])
+                err_wemd_ref = calc_error(results["refin_max_wemd"][i, j, k], results["true_mtx"][i, j, k])
+                err_l2_opt = calc_error(results["optim_max_l2"][i, j, k], results["true_mtx"][i, j, k])
+                err_l2_ref = calc_error(results["refin_max_l2"][i, j, k], results["true_mtx"][i, j, k])
+                
 
                 logging.info(f"Results for volume {vol_fname}, parameters (downsample_res, max_iter) = {param}, iteration {k}:")
+                logging.info(f"True rotation: {results['true_mtx'][i, j, k]}")
+                logging.info(f"Optim rotation for wemd: {results['optim_max_wemd'][i, j, k]}")
+                logging.info(f"Refined rotation for wemd: {results['refin_max_wemd'][i, j, k]}")
+                logging.info(f"Optim rotation for l2: {results['optim_max_l2'][i, j, k]}")
+                logging.info(f"Refined rotation for l2: {results['refin_max_l2'][i, j, k]}")
                 logging.info(f"Error for wemd opt: {err_wemd_opt}")
                 logging.info(f"Error for wemd ref: {err_wemd_ref}")
                 logging.info(f"Error for l2 opt: {err_l2_opt}")
@@ -140,6 +153,6 @@ results = run_align_test(vol_fnames, n_iter, config, param_setups)
 
 # save results to numpyz file
 np.savez(
-    os.path.join(config.full_save_path, "results_with_refinement.npz"),
+   "results_with_refinement.npz",
     **results
 )

@@ -8,7 +8,7 @@ from scipy.optimize import minimize
 
 def refinm_loss(quat, vol1, vol2):
     rot = scipy_rotation.from_quat(quat).as_matrix()
-    rot = aspire_rotation(rot.astype(np.float32))
+    rot = aspire_rotation(rot.T.astype(np.float32))
 
     vol_obj_rot = vol1.rotate(rot)
 
@@ -20,7 +20,7 @@ def run_nelder_mead_refinement(vol, vol_ref, init_rot, config):
     result = minimize(
         refinm_loss,
         quat_0,
-        args=(vol_ref, vol),
+        args=(vol, vol_ref),
         method="nelder-mead",
         options={"disp": True},
     )
