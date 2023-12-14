@@ -89,7 +89,7 @@ def calc_wemd(rot: np.ndarray, vol_obj: Volume, vol_ref_dwt: list) -> float:
         Loss between the objective volume and reference volume.
     """
 
-    vol_obj_rot = vol_obj.rotate(Rotation(rot))._data[0]
+    vol_obj_rot = vol_obj.rotate(Rotation(rot.T))._data[0]
 
     vol_obj_dwt = vol_to_dwt(vol_obj_rot)
     loss = earthmovers_dist(vol_obj_dwt, vol_ref_dwt)
