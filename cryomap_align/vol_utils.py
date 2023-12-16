@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import MDAnalysis as mda
 import mrcfile
 import logging
+import configargparse
 from scipy import ndimage
 from aspire.volume import Volume
 

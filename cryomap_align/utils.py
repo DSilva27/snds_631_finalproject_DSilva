@@ -93,9 +93,9 @@ def init_config(parser: configargparse.ArgumentParser):
     )
     parser.add_argument(
         "--invert_handedness",
-        type=bool,
+        type=int,
         help="Volume might have inverse handedness (used in manifold optimization)",
-        default=False,
+        default=0,
     )
 
     parser.add_argument(
