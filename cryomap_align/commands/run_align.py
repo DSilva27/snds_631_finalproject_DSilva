@@ -5,7 +5,8 @@ import numpy as np
 import os
 import logging
 
-from cryomap_align.utils import init_config, try_mkdir, center_vol
+from cryomap_align.utils import init_config, try_mkdir
+from cryomap_align.vol_utils import center_vol
 from cryomap_align.gauss_opt_utils import run_gaussian_opt
 from cryomap_align.opt_refinement import run_nelder_mead_refinement
 

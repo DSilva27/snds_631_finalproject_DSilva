@@ -1,14 +1,26 @@
-#!/bin/bash
-#SBATCH --job-name=opt_report_noise
-#SBATCH --output=output-%j.txt --error=error-%j.txt
-#SBATCH --time=1-00:00:00
-#SBATCH --nodes=1 --ntasks=1 --cpus-per-task=8
-#SBATCH --mem-per-cpu=4G
-#SBATCH --partition=pi_lederman
-#SBATCH --mail-user=david.silva@yale.edu
-#SBATCH --mail-type=BEGIN,END
+#!/bin/bash -l
 
-source ~/.bashrc
-conda activate optimization_env
+# Standard output and error:
+#SBATCH --output=output-%j.txt --error=output-%j.txt
+# Initial working directory:
+# Job Name:
+#SBATCH -J Optimization_Noise
+#
+# Queue (Partition):
+#SBATCH --constraint=rome
+#SBATCH --partition=ccm
+#
+# Request 2 node(s)
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=16
+#SBATCH --mem-per-cpu=2G
+#SBATCH --time=24:00:00
+#SBATCH --mail-type=ALL --mail-user=dsilvas@flatironinstitute.org
+
+source ~/virtual_envs/optimization_env/bin/activate
+
+NUMEXPR_MAX_THREADS=$SLURM_CPUS_PER_TASK
+export NUMEXPR_MAX_THREADS
 
 python report_figures_noise.py

@@ -8,7 +8,8 @@ import logging
 import time
 import sys
 
-from cryomap_align.utils import init_config, try_mkdir, center_vol
+from cryomap_align.utils import init_config, try_mkdir
+from cryomap_align.vol_utils import center_vol
 from cryomap_align.gauss_opt_utils import run_gaussian_opt
 from cryomap_align.opt_refinement import run_nelder_mead_refinement
 
@@ -192,13 +193,16 @@ def run_noise_test(vol_fname, n_iter, config, signal_noise_ratios, param_setups)
 
 logging.info("Running test for noise")
 
-vol_fname = "volumes/emd_3683.map.gz"
+vol_fname = "volumes/emd_3683.map"
 
 param_setups = [
     [32, 200],
     [64, 150],
 ]
-snrs = [1.0 / 32.0, 1.0 / 128.0]
+snrs = [
+    1.0 / 32.0,
+    1.0 / 128.0
+]
 n_iter = 25
 
 results = run_noise_test(vol_fname, n_iter, config, snrs, param_setups)

@@ -8,7 +8,8 @@ import logging
 import time
 import sys
 
-from cryomap_align.utils import init_config, try_mkdir, center_vol
+from cryomap_align.utils import init_config, try_mkdir
+from cryomap_align.vol_utils import center_vol
 from cryomap_align.gauss_opt_utils import run_gaussian_opt
 from cryomap_align.opt_refinement import run_nelder_mead_refinement
 
@@ -31,7 +32,7 @@ config = parser.parse_args(sys.argv)
 logging.captureWarnings(False)
 
 logger = logging.getLogger()
-fhandler = logging.FileHandler(filename="log_no_refinment.log", mode="a")
+fhandler = logging.FileHandler(filename="log_refinment.log", mode="a")
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 fhandler.setFormatter(formatter)
 
@@ -157,10 +158,12 @@ def run_align_test(vol_fnames, n_iter, config, param_setups):
     return results
 
 
+logging.info(f"config.invert_handedness = {config.invert_handedness}")
+
 logging.info("Running test for no refinement")
 
 vol_fnames = [
-    "volumes/emd_3683.map.gz",
+    "volumes/emd_3683.map",
     #   "volumes/emd_25892.map.gz",
     #    "volumes/emd_9515.map.gz",
     #    "volumes/emd_23006.map.gz",
@@ -172,6 +175,7 @@ param_setups = [
 n_iter = 50
 
 results = run_align_test(vol_fnames, n_iter, config, param_setups)
+
 
 # save results to numpyz file
 np.savez("results_with_refinement.npz", **results)
