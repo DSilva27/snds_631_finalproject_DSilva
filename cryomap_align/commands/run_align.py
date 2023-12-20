@@ -52,45 +52,43 @@ def main():
     if config.corr_length is None:
         config.corr_length = 0.75  # if config.dist_metric == "wasserstein" else 1.0
 
-    vol1 = Volume.load(config.vol1)
-    vol2 = Volume.load(config.vol2)
+    vol = Volume.load(config.vol1)
+    vol_ref = Volume.load(config.vol2)
 
     if config.downsample_res is None:
-        config.downsample_res = vol1.shape[1]
+        config.downsample_res = vol.shape[1]
 
-    assert vol1.shape == vol2.shape, "Volumes must have the same shape"
     assert (
-        config.downsample_res <= vol1.shape[1]
+        config.downsample_res <= min(vol.shape[1], vol_ref.shape[1])
     ), "Downsampling resolution must be smaller than volume size"
 
-    vol1_cent = center_vol(vol1, config)
-    vol2_cent = center_vol(vol2, config)
+    vol_cent = center_vol(vol, config)
+    vol_ref_cent = center_vol(vol_ref, config)
 
-    vol1_cent.save(os.path.join(config.full_save_path, "vol1_cent.mrc"), overwrite=True)
-    vol2_cent.save(os.path.join(config.full_save_path, "vol2_cent.mrc"), overwrite=True)
+    vol_cent.save(os.path.join(config.full_save_path, "vol_cent.mrc"), overwrite=True)
+    vol_ref_cent.save(os.path.join(config.full_save_path, "vol_ref_cent.mrc"), overwrite=True)
 
-    vol1_cent_ds = vol1_cent.downsample(config.downsample_res)
-    vol2_cent_ds = vol2_cent.downsample(config.downsample_res)
+    vol_cent_ds = vol_cent.downsample(config.downsample_res)
+    vol_ref_cent_ds = vol_ref_cent.downsample(config.downsample_res)
 
-    opt_rot = run_gaussian_opt(vol1_cent_ds, vol2_cent_ds, init_cand, config)
+    opt_rot = run_gaussian_opt(vol_cent_ds, vol_ref_cent_ds, init_cand, config)
 
     # rotations = np.load(os.path.join(config.full_save_path, "optimized_rotations.npz"))
     # opt_rot = rotations["opt_rot"].astype(np.float32)
     # refined_rot = rotations["refined_rot"].astype(np.float32)
 
-    vol2_aligned = vol2_cent.rotate(Rotation(opt_rot.T))
-    vol2_aligned.save(
-        os.path.join(config.full_save_path, "vol2_aligned.mrc"), overwrite=True
+    vol_aligned = vol_cent.rotate(Rotation(opt_rot.T))
+    vol_aligned.save(
+        os.path.join(config.full_save_path, "vol_aligned.mrc"), overwrite=True
     )
 
     if config.refine:
-        refined_rot = run_nelder_mead_refinement(
-            opt_rot, vol1_cent_ds, vol2_cent_ds, config
-        )
 
-        vol2_aligned = vol2_cent.rotate(Rotation(refined_rot.T))
-        vol2_aligned.save(
-            os.path.join(config.full_save_path, "vol2_aligned_refined.mrc"),
+        refined_rot = run_nelder_mead_refinement(vol_cent_ds, vol_ref_cent_ds, opt_rot, config)
+
+        vol_aligned = vol_cent.rotate(Rotation(refined_rot.T))
+        vol_aligned.save(
+            os.path.join(config.full_save_path, "vol_aligned_refined.mrc"),
             overwrite=True,
         )
 
